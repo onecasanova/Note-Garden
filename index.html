@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Note Garden</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+
+  <!-- Sidebar toggle (visible in both states) -->
+  <button id="sidebar-toggle" title="Open sidebar">&#9776;</button>
+
+  <!-- Sidebar overlay -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">gardens</span>
+      <button id="sidebar-close" title="Close sidebar">&times;</button>
+    </div>
+    <button id="new-garden-btn">+ new garden</button>
+    <ul id="garden-list"></ul>
+  </div>
+
+  <!-- Context menu -->
+  <div id="context-menu">
+    <button data-action="rename">rename</button>
+    <button data-action="delete">delete</button>
+  </div>
+
+  <div id="welcome-screen">
+    <h1>note garden</h1>
+    <p>visualize connections between your notes</p>
+    <button id="open-folder-btn">open notes folder</button>
+  </div>
+
+  <div id="app" style="display: none;">
+    <div class="title-overlay">
+      <h1>note garden</h1>
+      <p>connections between notes</p>
+    </div>
+
+    <div class="tooltip"></div>
+
+    <div class="detail-panel">
+      <button class="close-btn">&times;</button>
+      <h2></h2>
+      <div class="excerpts"></div>
+    </div>
+
+    <div id="graph-container"></div>
+  </div>
+
+  <script type="module" src="/src/garden.js"></script>
+</body>
+</html>
