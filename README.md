@@ -1,6 +1,6 @@
 # Note Garden
 
-A macOS and Linux desktop app that visualizes word co-occurrences across a collection of `.txt` and `.md` files as an interactive force-directed graph. Point it at any folder of text files and see how words relate across your notes. Thought of this to help me see what are some of the common themes across my notes and how they related to each other as I started to take notes on my laptop with `.txt` files.o
+A macOS and Linux desktop app that visualizes word co-occurrences across a collection of `.txt` and `.md` files as an interactive force-directed graph. Point it at any folder of text files and see how words relate across your notes. Thought of this to help me see what are some of the common themes across my notes and how they related to each other as I started to take notes on my laptop with `.txt` files.
 
 
 Built with Tauri v2 and D3.js.
