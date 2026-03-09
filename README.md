@@ -41,7 +41,7 @@ sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-username>/Note-Garden.git
+git clone https://github.com/onecasanova/Note-Garden.git
 cd Note-Garden
 
 # Install JS dependencies
