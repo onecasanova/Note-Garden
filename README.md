@@ -52,7 +52,7 @@ source ~/.cargo/env   # if cargo isn't in your PATH
 npm run tauri dev
 ```
 
-## Production Build
+## Production Build (Install Desktop App)
 
 ```bash
 npm run tauri build

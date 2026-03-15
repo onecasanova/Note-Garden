@@ -62,7 +62,7 @@ svg {
   position: fixed;
   top: 0;
   left: 0;
-  width: 260px;
+  width: var(--sidebar-width, 260px);
   height: 100vh;
   background: rgba(8, 14, 10, 0.98);
   border-right: 1px solid #1a3a1a;
@@ -72,6 +72,25 @@ svg {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+#sidebar.resizing {
+  transition: none;
+  user-select: none;
+}
+
+#sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 310;
+}
+
+#sidebar-resize-handle:hover {
+  background: rgba(122, 184, 122, 0.2);
 }
 
 #sidebar.open {

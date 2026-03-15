@@ -42,11 +42,27 @@ async function init() {
   document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
   document.getElementById('new-garden-btn').addEventListener('click', createNewGarden);
 
-  // Context menu actions
-  document.getElementById('context-menu').addEventListener('click', onContextMenuAction);
+  // Context menu buttons — direct handlers to avoid event delegation issues
+  document.querySelector('#context-menu [data-action="rename"]').addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  document.querySelector('#context-menu [data-action="rename"]').addEventListener('click', (e) => {
+    e.stopPropagation();
+    onContextMenuAction('rename');
+  });
+  document.querySelector('#context-menu [data-action="delete"]').addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  document.querySelector('#context-menu [data-action="delete"]').addEventListener('click', (e) => {
+    e.stopPropagation();
+    onContextMenuAction('delete');
+  });
   // Hide context menu on any click outside
   document.addEventListener('click', hideContextMenu);
 
+  initSidebarResize();
   renderGardenList();
 
   // Auto-restore last active garden
@@ -84,9 +100,9 @@ async function createNewGarden() {
     return;
   }
 
-  const txtFiles = entries.filter(e => e.name && e.name.endsWith('.txt'));
-  if (txtFiles.length === 0) {
-    await message('No .txt files found in the selected folder.', { title: 'Error', kind: 'error' });
+  const noteFiles = entries.filter(e => e.name && (e.name.endsWith('.txt') || e.name.endsWith('.md')));
+  if (noteFiles.length === 0) {
+    await message('No .txt or .md files found in the selected folder.', { title: 'Error', kind: 'error' });
     return;
   }
 
@@ -120,16 +136,16 @@ async function loadGarden(garden) {
     return;
   }
 
-  const txtFiles = entries.filter(e => e.name && (e.name.endsWith('.txt') || e.name.endsWith('.md')));
-  if (txtFiles.length === 0) {
-    await message('No .txt files found in this folder.', { title: 'Error', kind: 'error' });
+  const noteFiles = entries.filter(e => e.name && (e.name.endsWith('.txt') || e.name.endsWith('.md')));
+  if (noteFiles.length === 0) {
+    await message('No .txt or .md files found in this folder.', { title: 'Error', kind: 'error' });
     return;
   }
 
-  // Read all .txt files
+  // Read all note files
   noteContents = {};
   const fileContents = await Promise.all(
-    txtFiles.map(async entry => {
+    noteFiles.map(async entry => {
       const filePath = `${garden.folderPath}/${entry.name}`;
       const text = await readTextFile(filePath);
       noteContents[entry.name] = text;
@@ -181,6 +197,33 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('visible');
 }
 
+// ── Sidebar resize ──
+function initSidebarResize() {
+  const sidebar = document.getElementById('sidebar');
+  const handle = document.getElementById('sidebar-resize-handle');
+  let isResizing = false;
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isResizing = true;
+    sidebar.classList.add('resizing');
+    document.body.style.cursor = 'col-resize';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    const newWidth = Math.min(Math.max(180, e.clientX), 600);
+    sidebar.style.setProperty('--sidebar-width', newWidth + 'px');
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!isResizing) return;
+    isResizing = false;
+    sidebar.classList.remove('resizing');
+    document.body.style.cursor = '';
+  });
+}
+
 function renderGardenList() {
   const list = document.getElementById('garden-list');
   list.innerHTML = '';
@@ -206,9 +249,8 @@ function renderGardenList() {
     li.appendChild(nameSpan);
     li.appendChild(pathSpan);
 
-    // Click to load
+    // Click to load (sidebar stays open — user closes it manually)
     li.addEventListener('click', () => {
-      closeSidebar();
       loadGarden(garden);
     });
 
@@ -239,24 +281,22 @@ function hideContextMenu() {
   contextMenuTargetId = null;
 }
 
-async function onContextMenuAction(event) {
-  const action = event.target.dataset.action;
+async function onContextMenuAction(action) {
   if (!action || !contextMenuTargetId) return;
 
-  event.stopPropagation();
   const gardenId = contextMenuTargetId;
   const garden = gardens.find(g => g.id === gardenId);
-  if (!garden) return;
-
   hideContextMenu();
+
+  if (!garden) return;
 
   if (action === 'rename') {
     startInlineRename(gardenId);
   } else if (action === 'delete') {
     const confirmed = await ask(`Delete "${garden.name}"?\n\nThis only removes it from the sidebar — your files are untouched.`, { title: 'Delete Garden', kind: 'warning' });
     if (confirmed) {
-      gardens = gardens.filter(g => g.id !== garden.id);
-      if (activeGardenId === garden.id) {
+      gardens = gardens.filter(g => g.id !== gardenId);
+      if (activeGardenId === gardenId) {
         activeGardenId = null;
         document.getElementById('welcome-screen').style.display = '';
         document.getElementById('app').style.display = 'none';
@@ -286,6 +326,7 @@ function startInlineRename(gardenId) {
     input.value = garden.name;
 
     nameSpan.replaceWith(input);
+    input.addEventListener('click', (e) => e.stopPropagation());
     input.focus();
     input.select();
 
@@ -311,6 +352,24 @@ function startInlineRename(gardenId) {
   }
 }
 
+// ── Markdown Stripping ──
+function stripMarkdown(text) {
+  return text
+    .replace(/```[\s\S]*?```/g, '')         // fenced code blocks
+    .replace(/`[^`]+`/g, '')                 // inline code
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')    // images
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links → keep text
+    .replace(/^#{1,6}\s+/gm, '')             // headings
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')      // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2')         // italic
+    .replace(/~~(.*?)~~/g, '$1')             // strikethrough
+    .replace(/^>\s+/gm, '')                  // blockquotes
+    .replace(/^[-*+]\s+/gm, '')              // unordered list markers
+    .replace(/^\d+\.\s+/gm, '')              // ordered list markers
+    .replace(/^---+$/gm, '')                 // horizontal rules
+    .replace(/\n{3,}/g, '\n\n');             // collapse excess newlines
+}
+
 // ── Text Processing & Graph Construction ──
 function tokenize(text) {
   return text
@@ -326,7 +385,8 @@ function buildGraph(files, stopSet) {
   const fileWords = []; // array of { filename, wordSet }
 
   for (const { filename, text } of files) {
-    const tokens = tokenize(text).filter(w => !stopSet.has(w));
+    const cleaned = filename.endsWith('.md') ? stripMarkdown(text) : text;
+    const tokens = tokenize(cleaned).filter(w => !stopSet.has(w));
     const wordSet = new Set(tokens);
 
     // Count global frequency
@@ -535,7 +595,7 @@ function onNodeHover(event, d) {
 
   // Tooltip content
   const sourcesHtml = d.sources.map(s =>
-    `<span>${s.replace('.txt', '')}</span>`
+    `<span>${s.replace(/\.(txt|md)$/, '')}</span>`
   ).join('');
 
   tooltip.html(`
@@ -576,7 +636,8 @@ function onNodeClick(event, d) {
   excerptsContainer.html('');
 
   for (const filename of d.sources) {
-    const text = noteContents[filename];
+    const rawText = noteContents[filename];
+    const text = filename.endsWith('.md') ? stripMarkdown(rawText) : rawText;
     // Find sentences containing the word
     const sentences = text.split(/(?<=[.!?])\s+/);
     const relevant = sentences.filter(s =>
@@ -594,7 +655,7 @@ function onNodeClick(event, d) {
     );
 
     const div = excerptsContainer.append('div').attr('class', 'excerpt');
-    div.append('h3').text(filename.replace('.txt', ''));
+    div.append('h3').text(filename.replace(/\.(txt|md)$/, ''));
     div.append('p').html(highlighted);
   }
 
